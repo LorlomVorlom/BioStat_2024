@@ -1,0 +1,925 @@
+---
+title: "Project_initial"
+author: "AB"
+date: "2024-08-16"
+output: 
+  word_document:
+  reference_docx: "example.docx"
+  toc: yes
+  toc_depth: 3
+toc-title: "Оглавление"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(readxl)
+library(xlsx)
+library(psych)
+library(tibble)
+library(dplyr)
+library(stringr)
+library(stringi)
+library(tidyr)
+library(flextable)
+```
+
+#Reading and whriting files
+
+##readr::read_delim(), readr::write_delim()
+
+read_delim("data/raw/data_csv.csv", delim = NULL, quote = "\", na = c("", "NA"), skip = 0, n_max = Inf, col_names = TRUE)
+
+```{r}
+data <- read_delim("data/raw/data_tsv.tsv", delim = "\t", skip = 0, n_max = 10)
+typeof(data)
+as.data.frame(data)
+```
+
+```{r}
+data %>% write_delim("data/raw/data1_tsv.tsv", delim = "\t", na = "NA")
+```
+
+##readr::read_csv(), readr::read_csv2()
+
+read_csv("data/raw/data_csv.csv", skip = 0, n_max = Inf) - разделитель-запятая
+read_csv2("data/raw/data_csv2.csv", skip = 0, n_max = Inf) - разделитель  - точка с заятой
+
+```{r}
+read_csv("data/raw/data_csv.csv", skip = 0, n_max = Inf)
+```
+
+```{r}
+read_csv2("data/raw/data_csv2.csv", skip = 0, n_max = Inf)
+```
+
+##readr::write_csv(), readr::write_csv2(), readr::write_excel_csv(), readr::write_excel_csv2()
+
+```{r}
+write_csv(data, "data/raw/data_csv.csv")
+write_excel_csv(data, "data/raw/data_csv.csv")
+write_csv2(data, "data/raw/data_csv2.csv")
+write_excel_csv2(data, "data/raw/data_csv2.csv")
+```
+
+##readr::read_tsv()
+
+```{r}
+read_tsv("data/raw/data1_tsv.tsv", skip = 0, n_max = Inf)
+```
+
+##readr::write_tsv()
+
+```{r}
+data %>% write_tsv("data/raw/data1_tsv.tsv")
+```
+
+##readxl::read_excel()
+Excel часто ломает даты, переводя их в дробные числа, а дробные числа в даты
+sheet - имя листа, если не указывать, откроется первый лист
+```{r}
+read_excel("data/raw/data_excel.xlsx", sheet = "data_csv2")
+```
+
+##xlsx::write.xlsx()
+```{r}
+write.xlsx(data, "data_excel.xlsx", col.names = TRUE)
+```
+
+##haven::read_spss(), haven::read_sas() - для SPSS, SAS
+
+##haven::write_sav()
+
+##readr::read_rds() - главный формат в R
+##readr::write_rds()
+```{r}
+write_rds(data, "data/raw/data.rds")
+read_rds("data/raw/data.rds")
+```
+
+#Statistics...
+##mean()
+mean(x, trim = 0, na.rm = FALSE)
+1. x: вектор типа numeric;
+trim = 0: аргумент, говорящий, сколько процентов наибольших и наименьших значений нужно убрать перед тем, как вычислять среднее. Позволяет избавиться от выбросов;
+2. na.rm = FALSE: если мы предполагаем, что в векторе могут встретиться пропущенные значения, то необходимо установить значение этого аргумента как TRUE, в ином случае результатом функции будет NA
+
+```{r}
+mean(c(20, 68, 45, 76, 41, 36, 13, 52, 77, 53, 70, 73), trim = 5, na.rm = FALSE)
+mean(c(20, 68, 45, 76, 41, 36, 13, 52, 77, 53, 70, 73))
+```
+
+##median()
+median(x, na.rm = FALSE)
+1. x: вектор типа numeric;
+2. na.rm = FALSE: если мы предполагаем, что в векторе могут встретиться пропущенные значения, то необходимо установить значение этого аргумента как TRUE, в ином случае результатом функции будет NA
+```{r}
+median(c(30, 87, 55, -71, 93, 50, 34, -51, 13, 96, -62, 53, -85), na.rm = FALSE)
+```
+
+##min(), max()
+min(x, na.rm = FALSE)
+max(x, na.rm = FALSE)
+```{r}
+min(c(13, 50, 44, 37, 20, 29, -8, 4, 45, 31, 47, -5, -2, 24, 17, 45, 44, 31, -5, 26))
+max(c(13, 50, 44, 37, 20, 29, -8, 4, 45, 31, 47, -5, -2, 24, 17, 45, 44, 31, -5, 26))
+```
+
+##quantile()
+quantile(x, probs = seq(0, 1, 0.25), na.rm = FALSE, names = TRUE, type = 7)
+1. x: это исходный вектор с числами;
+2. probs = seq(0, 1, 0.25): вектор процентилей, то есть, сколько процентов элементов вектора должно быть меньше или равно искомого числа;
+3. na.rm = FALSE: убирать ли пропущенные значения;
+names = TRUE: прикреплять ли имена квантилей к значениям полученного вектора;
+4. type = 7: есть несколько способов расчёта квантилей, но в общем случае можно использовать значение по умолчанию.
+
+```{r}
+quantile(c(31.83, 45.12, 55.66, 67.76, 25.73, 42.87, 55.22, 44.92, 48.03, 41.37, 66.26, 114.02, 32.93))
+```
+
+##var(), sd()
+Дисперсия — это просто средний квадрат отклонений значений от среднего значения.
+Стандартное отклонение — это квадратный корень из дисперсии, который измеряет отклонения в единицах переменной, а не в их квадратах.
+Функция вычисляет только несмещенную оценку дисперсии
+var(x, na.rm = TRUE)
+1. x: это исходный вектор с числами;
+2. na.rm = FALSE: убирать ли пропущенные значения.
+
+```{r}
+var(c(65.14, 49.87, 34.11, 43.23, 35.72, 35.73, 70.86))
+sd(c(65.14, 49.87, 34.11, 43.23, 35.72, 35.73, 70.86))
+```
+
+##IQR() - межквартильный размах
+IQR(x, na.rm = FALSE, type = 7)
+1. x: это исходный вектор с числами;
+2. na.rm = FALSE: убирать ли пропущенные значения;
+3. type = 7: так как эта функция вычисляется на основе квантилей, для неё тоже применим тип квантиля, однако чаще всего подходит значение по умолчанию.
+
+```{r}
+IQR(c(80.94, 44.46, 46.33, 65.1, 66.42, 104.43, 53.15, 48.41, 12.88, 51.1, 43.03, 40.3, 33.71, 55.1, 22.17), na.rm = FALSE, type = 7)
+```
+
+##length() - длина вектора или количество значений вектора
+
+```{r}
+length(1:10)
+```
+
+##sum() - обычно это сумма значений вектора
+1. sum(!is.na(vec))- количество значений без учёта пропущенных;
+2. sum(is.na(vec))- количество пропущенных значений.
+
+```{r}
+sum(1:100)
+```
+
+##summary()
+1. для количественных переменных возвращает: минимум, первый квартиль, медиану, среднее, третий квартиль, максимум;
+2. для категориальных/строковых переменных возвращает просто количество каждой категории
+
+```{r}
+summary(data)
+```
+
+##psych::describe() - вычисление множества статистик
+describe(x, digits = 2, na.rm = TRUE, skew = FALSE, ranges = TRUE)
+1. x: датафрейм с количественными переменными;
+2. digits = 2: до скольки цифр округлять значения в итоговой таблице;
+3. na.rm = TRUE: удалять ли пропущенные значения в переменных;
+4. skew = TRUE: вычислять ли асимметрию;
+5. ranges = TRUE: вычислять размах, то есть, разницу между максимумом и минимумом.
+
+```{r}
+describe(data)
+```
+
+##table(), prop.table() - подробная статистика для категориальных данных
+table(x, useNA = "always")
+1. x: датафрейм с n переменными;
+2. useNA = "always": делать ли сводку по пропущенным значениям.
+
+```{r}
+read_rds("data/raw/factor_data.rds")
+table(data$Группа, data$`Группа крови`)
+prop.table(table(data$Группа, data$`Группа крови`))
+```
+
+#Serious work with data
+
+##tibble()
+
+```{r}
+data <- read_delim("data/raw/data_tsv.tsv", delim = "\t")
+as_tibble(data)
+```
+
+```{r}
+tibble(var_first = 1:10,
+       var_second = var_first^2)
+```
+
+```{r}
+tibble(var_first = 1:10, var_second = ifelse(var_first < 5, var_first+10, var_first))
+data %>% view()
+```
+
+##tibble::add_column() - имя столбца должно быть уникальным
+data %>% add_column(column_name = 1:10, .before = NULL, .after = NULL)
+1. data: просто имя датафрейма, к которому мы хотим добавить столбец;
+column_name: это имя нового столбца. Оно может быть любым, не только таким, как в примере;
+2. .before: номер уже существующего столбца, перед которым нужно поставить новый;
+3. .after: то же, но уже после которого нужно поставить новый. Хитрый приём: если нужно поставить переменную в конец датафрейма, то в значение можно поставить Inf.
+
+```{r}
+data %>% add_column(just_column = "just values", .before = 1)
+```
+
+##tibble::add_row()
+data %>% add_row(var_1 = 1, var_2 = "value", .before = NULL, .after = NULL)
+1. data: просто имя датафрейма, к которому мы хотим добавить столбец;
+2. var_1, var_2: это имя нового столбца. Оно может быть любым;
+3. .before: номер уже существующей строки, перед которым нужно поставить новый;
+4. .after: то же, но уже после которого нужно поставить новый. Хитрый приём: если нужно поставить переменную в низ датафрейма, то в значение можно поставить Inf
+ Не надо к факторной переменной добавлять новое значение не фактор
+```{r}
+data %>%
+  add_row(`Группа` = "New group", `Возраст` = 100, .before = 1)
+```
+
+##dplyr::row_number() - нумерация строк
+
+```{r}
+data %>%
+  mutate(ID = row_number())
+```
+
+##dplyr::bind_cols() - склеивание столбцов
+data_1 %>% bind_cols(data_2) %>% bind_cols(data_3)
+В таблицах должно быть одинаковое количество строк, переменные должны иметь разные имена
+
+```{r}
+data_1 <- tibble(var_1 = 1:10, var_2 = rep(c("Группа 1", "Группа 2"), 5))
+data_2 <- tibble(var_2 = rbeta(10, 1, 5), var_3 = rnorm(10))
+data_3 <- tibble(var_4 = 100:91, var_5 = rep(c("Молодые", "Средний возраст"), 5))
+data_1 %>% bind_cols(data_2) %>% bind_cols(data_3)
+```
+
+##dplyr::bind_rows() - склеивание строк
+data_1 %>% bind_rows(data_2) %>% bind_rows(data_3)
+Нужно, чтобы переменные были одинакового типа и одинаково назывались
+```{r}
+data_1 <- tibble(var_1 = "var 1", var_2 = "var 2", var_3 = "var 3")
+data_2 <- tibble(var_1 = "var 1", var_2 = "var 2")
+data_3 <- tibble(var_1 = "var 1", var_2 = "var 2")
+data_1 %>%bind_rows(data_2) %>% bind_rows(data_3)
+```
+
+##dplyr::left_join(), dplyr::right_join(), dplyr::inner_join(), dplyr::full_join()
+1. left_join(x, y): включает все строки, которые есть в x, отбрасывая из y те, которых нет;
+2. right_join(x, y): включает все строки, которые есть в y, отбрасывая те, которых там нет;
+3. inner_join(x, y): включает все строки, которые есть и в x и y;
+4. full_join(x, y): просто включает все строки, которые есть хотя бы в x или y
+Должна быть уникальная переменная, например, ID пациента, по которой функция понимает, какую строку с какой сопоставлять. Это может быть не только одна переменная, но и их уникальное сочетание, например, ID пациента, его визиты, а также получаемый препарат. Эти три переменных и являются в таком случае уникальным ключом к сопоставлению строк.
+
+```{r}
+data_1 <- tibble(var_1 = 1:8) %>% mutate(id = row_number())
+data_2 <- tibble(var_2 = rnorm(10)) %>% mutate(`Subject ID` = row_number())
+data_1 %>%
+  left_join(data_2, by = c("id" = "Subject ID"))
+```
+
+```{r}
+data_1 %>%
+  right_join(data_2, by = c("id" = "Subject ID"))
+```
+
+```{r}
+data_1 %>%
+  inner_join(data_2, by = c("id" = "Subject ID"))
+```
+
+```{r}
+data_1 %>%
+  full_join(data_2, by = c("id" = "Subject ID"))
+```
+
+##dplyr::group_by()
+data %>% group_by(column_name)
+
+```{r}
+data %>% group_by(`Группа`)
+```
+
+##base::split() - разбивает датафрейм на список датафреймов по указанным группам
+
+```{r}
+data %>%
+  split(~`Группа`)
+```
+
+##dplyr::rowwise() - работа со строками (как бы переключение с работы со столбцами на работу со строками)
+после rowwise() следует всегда разгруппировывать датафрейм
+
+```{r}
+data %>%
+  rowwise() %>%
+  mutate(`Среднее по базофилам за два визита` = mean(c(`Базофилы_E1`, `Базофилы_E2`))) %>%
+  ungroup() %>%
+  select(`Базофилы_E1`, `Базофилы_E2`, `Среднее по базофилам за два визита`)
+```
+
+##dplyr::select(), where()
+
+```{r}
+data %>%
+  select(`Группа крови`, `Рост`)
+```
+
+```{r}
+data %>%
+  select(!`Группа крови`, `Рост`)
+```
+
+```{r}
+data %>%
+  select(where(is.numeric))
+```
+
+```{r}
+data %>% select(where(is.numeric)) %>% select(function(x) mean(x, na.rm = TRUE) > 10)
+```
+
+##tidyselect::contains(), tidyselect::matches(), tidyselect::starts_with(), tidyselect::ends_with()
+
+1. tidyselect::contains() - выбирает только те переменные, в названиях которых есть определенная подстрока
+
+```{r}
+data %>% select(contains("_E1"))
+```
+
+2. tidyselect::matches() - выбирает не просто по подстроке, а по регулярному выражению. В примере ниже выбрали все переменные, у которых после _У стоит ровно одна любая цифра от 0 до 9
+
+```{r}
+data %>% select(matches("_E\\d{1}"))
+```
+
+3. tidyselect::starts_with() - выбирает только те переменные, которые начинаются с определенной подстроки
+
+```{r}
+data %>% select(starts_with("Б"))
+```
+
+4. tidyselect::ends_with() - выбирает все переменные, заканчивающиеся на определенную подстроку
+
+```{r}
+data %>% select(ends_with("E2"))
+```
+
+##tidyselect::all_of(), tidyselect::any_of()
+
+Можно выбирать переменные с помощью внешнего вектора, однако это неоднозначное условие и лучше использовать функции ниже для более строгого выбора переменных
+
+```{r}
+variables <- c("Базофилы_E1", "Эозинофилы_E1", "Гемоглобин_E1")
+data %>% select(variables)
+```
+
+1. tidyselect::all_of() - выдает ошибку, если хотя бы одна из переменных отсуствует
+
+```{r}
+variables <- c("Базофилы_E1", "Эозинофилы_E1", "Гемоглобин_E1")
+data %>% select(all_of(variables))
+```
+
+2. tidyselect::any_of() - выбирает как минимум те переменные, которые точно есть (более мягкая)
+
+```{r}
+variables <- c("Базофилы_E1", "Эозинофилы_E1", "Гемоглобин_E1")
+data %>% select(any_of(variables))
+```
+
+##Intersection and unification of conditions, negation of conditions
+
+1. x < y, x > y, x <= y, x => y, x == y, x != y (операторы сравнения)
+2. !x (логическое НЕ)
+3. x & y (логическое И)
+4. x | y (логическое ИЛИ)
+```{r}
+data %>%
+  select(where(is.numeric)) %>%
+  select(where(function(x) sd(x, na.rm = TRUE) >2) & function(x) mean(x, na.rm = TRUE) <10)
+```
+
+```{r}
+data %>%
+  select(where(is.numeric)) %>%
+  select(where(function(x) sd(x, na.rm = TRUE) > 2 | mean(x, na.rm = TRUE) < 10 | median(x, na.rm = TRUE) > 5))
+```
+
+```{r}
+data %>%
+  select(!where(is.numeric))
+```
+
+##tidyselect::everything() - выбирает все остальные столбцы, кроме тех, которые уже были указаны
+
+```{r}
+data %>%
+  select(`Пол`, `Эритроциты_E1`, everything())
+```
+
+Еще можно выбирать и менять имена переменных
+
+```{r}
+data %>%
+  select(`Эритроциты_визит 1` = `Эритроциты_E1`, `Эритроциты_визит 2` = `Эритроциты_E2`)
+```
+
+##dplyr::slice() - выбор определенных строк
+
+```{r}
+data %>%
+  slice(1:10)
+```
+ 
+Пример ниже  - выбрать всё, кроме первых 10 строк
+
+```{r}
+data %>% 
+  slice(1:10 * -1)
+```
+
+slice_head(n=) - выбрать первые n строк
+
+```{r}
+data %>%
+  slice_head(n=10)
+```
+
+slice_head(prop = n) - выбрать первые n % строк
+
+```{r}
+data %>%
+  slice_head(prop = 0.1)
+```
+
+slice_tail(n =), slice_tail(prop = n) - то же самое, но с конца
+
+```{r}
+data %>%
+slice_tail(prop = 0.1)
+```
+
+slice_sample(prop = n) - выбрать случайно n % строк
+
+```{r}
+data %>%
+  slice_sample(prop = 0.15)
+```
+
+slice_min(), slice_max() - выбрать строки с минимальным или максимальным значением переменной
+
+```{r}
+data %>%
+  slice_min(`Возраст`)
+```
+
+##dplyr::filter()
+
+```{r}
+data %>%
+  filter(`Пол` == "Женский")
+```
+
+Для фильтрации категориальных переменных при выборе нескольких значений используется %in%
+
+```{r}
+data %>%
+  filter(`Группа крови` %in% c("A (II)", "0 (I)") & `Группа` != "Группа 1")
+```
+
+С количественной переменной используется не %in%, а between(), выберутся значения, которые входят в промежуток, минимум и максимум включены
+
+```{r}
+data %>%
+  filter(between(`Возраст`, 31, 34))
+```
+
+near() - профильтровать с ± n
+
+```{r}
+data %>%
+  filter(near(`Эозинофилы_E1`, 3.38, tol = 0.1))
+```
+
+if_any() - профильтровать по условию, чтобы хотя бы одна из перемнных соответствовала
+if_all() - условие, чтобы все переменные соотствествовали условию
+
+```{r}
+data %>%
+  filter(if_all(.cols = contains("Базофилы"), .fns = function(x) x>1.5))
+```
+
+```{r}
+data %>%
+  filter(if_any(.cols = contains("Базофилы"), .fns = function(x) x > 1/5))
+```
+
+Фильтрация с группированным датафреймом
+
+```{r}
+data %>%
+  group_by(`Группа`) %>%
+  filter(`Возраст` >36)
+```
+
+##dplyr::mutate() - изменяет и создает новые переменные на основе существующих
+
+```{r}
+data %>% 
+  mutate(`Женщины с четвертой группой крови` = if_else(`Пол` == "Женский" & `Группа крови` == "AB(IV)", "Да", "Нет")) %>%
+  select(`Женщины с четвертой группой крови`, everything()) %>%
+  arrange(`Женщины с четвертой группой крови`)
+```
+
+1. +: сложение;
+2. -: вычитание;
+3. `*`: умножение;
+4. /: деление;
+5. log(): натуральный логарифм;
+6. log1p(): тот же логарифм, но прибавляющий к исходному значению единицу, чтобы избавиться от проблемы нуля;
+7. exp(): возведение в экспоненту;
+8. expm1(): возведение в экспоненту из значения минус один;
+9. round(): округление до заданного количества знаков после запятой;
+10. ceiling(): округление до ближайшего максимального целого числа;
+11. floor(): округление до ближайшего минимального целого числа.
+
+##dplyr::case_when() - создание переменной на основе нескольких условий
+
+```{r}
+data %>%
+  mutate(`Возрастная группа` = case_when(`Возраст` < 20 ~ "<20",
+                                         between(`Возраст`, 20, 30) ~ "20 - 30",
+                                         `Возраст` > 30 ~ ">30") %>% as.factor()) %>%
+  select(`Возраст`, `Возрастная группа`)
+```
+
+##tidyr::na_if(), tidyr::replace_na()
+
+tidyr::replace_na() - заменить пропущенное значение на что-то, но сначала надо поменять тип 
+
+```{r}
+data %>%
+  mutate(`Группа.крови` = `Группа крови` %>% as.character() %>% replace_na("Нет данных") %>% as.factor())
+```
+
+na_if() - заменить что-то на пропущенное значение
+
+```{r}
+data %>%
+  mutate (`Группа крови` = `Группа крови` %>% na_if("B (III)"))
+```
+
+NULL - удалить переменную
+
+```{r}
+data %>%
+  mutate(`Группа`= NULL)
+```
+
+## across() - применение других функций одним применением
+
+1. Выбор столбцов, к которым будем применять функции;
+2. Сама функция
+
+Применение функции нормализации ко всем количествнным переменным
+
+```{r}
+data %>%
+  mutate(across(where(is.numeric), function(x) (x-mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)))
+```
+
+Применение функции нормализации к тем, которые в названии содержат E1
+
+```{r}
+data %>%
+  mutate(across(contains("E1"), function(x) (x-mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)))
+```
+
+Применение функции нормализации к тем переменным, среднее которых строго меньше 10
+
+```{r}
+data %>%
+  mutate(across(function(x) mean(x, na.rm = TRUE) <10, function(x) (x-mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)))
+```
+
+rowwise()
+
+```{r}
+data %>%
+  rowwise() %>%
+  mutate(`Среднее по базофилам` = mean(c_across(contains("Базофилы")))) %>%
+  ungroup() %>%
+  select(contains("Базофил"))
+```
+
+mutate() к сгруппированным датафреймам
+
+```{r}
+data %>%
+  group_by(`Группа`) %>%
+  mutate(across(contains("Базофилы"), function(x) x-mean(x, na.rm = TRUE))) %>%
+  ungroup() %>%
+  select(`Группа`, contains("Базофилы"))
+```
+
+##dplyr::rename()
+```{r}
+data %>%
+  rename(`Эритроциты_Визит 1`= `Эритроциты_E1`, `Эритроциты_Визит 2` = `Эритроциты_E2`) %>%
+  select(contains("Визит"))
+```
+
+##dplyr::rename_with(), stringi::stri_replace_all_regex() - заменить коды имен на человекочитаемые имена
+
+```{r}
+data %>%
+  rename_with(function(x) x %>% stringi::stri_replace_all_regex(c("_E1","_E2"), c("_Визит 1", "_Визит 2"), vectorize_all = FALSE)) %>%
+  glimpse()
+```
+
+```{r}
+library(stringi)
+data %>%
+  rename_with(.cols = where(is.numeric), .fn = function(x) stringr::str_c(x, " КОЛИЧЕСТВЕННАЯ ПЕРЕМЕННАЯ")) %>%
+  glimpse()
+```
+
+##:= and !! for special renaming - подавать разные переменные, чтобы присвоить их значения столбцам
+
+```{r}
+new_name <- "cool name"
+
+data %>%
+  rename(!! new_name := `Группа`) %>%
+  glimpse()
+```
+
+##dplyr::arrange() - сортировать данные по одной/нескольким переменным по возрастанию
+
+```{r}
+data %>%
+  arrange(`Возраст`)
+```
+
+По количественной переменной
+
+```{r}
+str(data)
+data <- data %>% mutate_if(is.character, as.factor)
+str(data)
+```
+
+По категориальной переменной
+
+```{r}
+data %>%
+  arrange(`Группа крови`) %>%
+  select(`Группа крови`, everything())
+```
+
+##dplyr::arrange(desc()) - по убыванию
+
+```{r}
+data %>%
+  arrange(desc(`Рост`))
+```
+
+По нескольким переменным
+
+```{r}
+data %>%
+  arrange(desc(`Рост`), `Возраст`)
+```
+
+Внутри групп
+```{r}
+data %>%
+  group_by(`Группа`) %>%
+  arrange(`Возраст`, .by_group = TRUE)
+```
+
+# Dataframe rotation
+
+## tidyr::pivot_longer() - перевод в длинный формат (значения первого столбца повторяются и разделяют данные на группы). Получаем переменную с именами переменных и переменную со их значениями. Уменьшает количество столбцов и увеличивает количество строк.
+
+```{r}
+data %>%
+  select(`Группа`, contains("E1")) %>%
+  tidyr::pivot_longer(!`Группа`)
+```
+
+## tidyr::pivot_wider() - перевод в широкие данные (антипод длинных данных). Увеличивает количество столбцов и уменьшает количество строк. ID создается, чтобы функция понимала уникальность строк (id_cols = ID).
+
+```{r}
+library(tidyr)
+data %>%
+  select(`Группа`, contains("E1")) %>%
+  mutate(ID = row_number()) %>%
+  pivot_longer(!c(`Группа`, ID)) %>%
+  pivot_wider(id_cols = ID)
+?pivot_wider
+```
+
+# Unique combinations selection
+
+## dplyr::distinct() - выбирается подмножество уникальных значений переменной (чаще всего ID). По первой строке в каждой "группе".
+
+```{r}
+data %>%
+  distinct(`Группа крови`, .keep_all = TRUE)
+```
+# Separating and uniting
+
+## tidyr::separate() - разделить одну переменную на две по определенному разделителю. В случае ниже создали датафрейм с переменной var_1, которая представляет собой объединенный вектор (paste0() не использует пробел в качестве разделителя) и повторили 10 раз, потом разделили.
+
+```{r}
+tibble(var_1 = rep(paste0("first part", "__", "second_part"), 10)) %>%
+  separate(var_1, into = c("var_1", "var_2"), sep = "__")
+```
+
+Но работает и так:
+
+```{r}
+tibble(var_1 = rep("first part__second_part", 10)) %>%
+separate(var_1, into = c("var_1", "var_2"), sep = "__")
+```
+
+## tidyr::unite() - склеивает переменные. В примере ниже склеили переменные в виде новой переменной "nes_var" с разделителем AND
+
+```{r}
+tibble(var_1 = rep(paste0("first part", "__", "second_part"), 10)) %>%
+  separate(var_1, into = c("var_1", "var_2"), sep = "__") %>%
+  unite("new_var", var_1, var_2, sep = "AND")
+```
+
+# Making of statistic tables
+## dplyr::summarise()/dplyr::summarize() - cводит переменные к указанному значению (среднее, медиана и др.). В примере ниже выбрали столбцы Группа и количественные, затем сгруппировали по Группа и вычислили среднее по количественным переменным по каждой группе.
+
+```{r}
+data %>%
+  select(`Группа`, where(is.numeric)) %>%
+  group_by(`Группа`) %>%
+  summarize(across(where(is.numeric), function(x) mean(x,na.rm = TRUE)))
+```
+
+##list() - для расчета множества статистик
+~ и .x - краткий способ записи function(x)
+sum(!is.na(.x)) - проверка на то, что переменная не пустая
+
+```{r}
+statistics <- list(
+      `_Количество субъектов` = ~length(.x) %>% as.character(),
+      `_Количество (есть данные)` = ~sum(!is.na(.x)),
+      `_Нет данных` = ~sum(is.na(.x)),
+      `_Ср. знач.` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", mean(.x, na.rm = TRUE) %>% round(2) %>% as.character()),
+      `_Станд. отклон.` = ~ifelse(sum(!is.na(.x)) < 3, "Н/П*", sd(.x, na.rm = TRUE) %>% round(2) %>% as.character()),
+      `_95% ДИ для среднего` = ~sd(.x, na.rm = TRUE) %>% round(2) %>% as.character(),
+      `_мин. - макс.` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", paste0(min(.x, na.rm = TRUE) %>% round(2), " - ", max(.x, na.rm = TRUE) %>% round(2))),
+      `_Медиана` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", median(.x, na.rm = TRUE) %>% round(2) %>% as.character()),
+      `_Q1 - Q3` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", paste0(quantile(.x, 0.25, na.rm = TRUE) %>% round(2), " - ", quantile(.x, 0.75, na.rm = TRUE) %>% round(2)))
+)
+ 
+data %>%
+  select(`Группа`, where (is.numeric)) %>%
+  group_by(`Группа`) %>%
+  summarise(across(where(is.numeric), statistics)) %>%
+  mutate_if (is.numeric, as.character) %>%
+  tidyr::pivot_longer(!`Группа`) %>% 
+  separate(name, into = c("Переменная", "Статистика"), sep = "__") %>%
+  rename(`Значение` = `value`)
+```
+
+## Table for categorial table
+count() - считает количество уникальных сочетаний указанных переменных
+```{r}
+data %>%
+  select(`Группа`, where(is.factor)) %>%
+  mutate(`Группа крови` = `Группа крови` %>% as.character() %>% replace_na("Нет данных") %>% as.factor()) %>%
+  count(`Группа`, `Группа крови`) %>%
+  group_by(`Группа`) %>%
+  mutate(`Процент по группе` = (n/ sum(n)) %>% round(4) %>% `*` (100) %>% stringr::str_c("%")) %>%
+  ungroup() %>%
+  mutate(`Процент по выборке` = (n/ sum(n)) %>% round(4) %>% `*`(100) %>% stringr::str_c("%"))
+```
+
+#Table printing
+
+##flextable::flextable() - создание таблиц из датафреймов, которые можно использовать и печатать в разных форматах. Сначала нужно перевести в формат flextable
+
+##flextable::theme_box(), flextable::theme_booktabs(), flextable::theme_alafoli() - темы для внешнего вида таблицы
+
+##flextable::merge_h(), flextable::merge_v() - склеивание ячеек для читаемого вида.
+
+merge_v() - указать имя столбца, склеит ячейки с одинаковым текстом.
+
+install.packages("flextable")
+
+```{r}
+
+statistics <- list(
+      `_Количество субъектов` = ~length(.x) %>% as.character(),
+      `_Количество (есть данные)` = ~sum(!is.na(.x)),
+      `_Нет данных` = ~sum(is.na(.x)),
+      `_Ср. знач.` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", mean(.x, na.rm = TRUE) %>% round(2) %>% as.character()),
+      `_Станд. отклон.` = ~ifelse(sum(!is.na(.x)) < 3, "Н/П*", sd(.x, na.rm = TRUE) %>% round(2) %>% as.character()),
+      `_95% ДИ для среднего` = ~sd(.x, na.rm = TRUE) %>% round(2) %>% as.character(),
+      `_мин. - макс.` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", paste0(min(.x, na.rm = TRUE) %>% round(2), " - ", max(.x, na.rm = TRUE) %>% round(2))),
+      `_Медиана` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", median(.x, na.rm = TRUE) %>% round(2) %>% as.character()),
+      `_Q1 - Q3` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", paste0(quantile(.x, 0.25, na.rm = TRUE) %>% round(2), " - ", quantile(.x, 0.75, na.rm = TRUE) %>% round(2)))
+)
+ 
+data %>%
+  select(`Группа`, where (is.numeric)) %>%
+  group_by(`Группа`) %>%
+  summarise(across(where(is.numeric), statistics)) %>%
+  mutate_if (is.numeric, as.character) %>%
+  tidyr::pivot_longer(!`Группа`) %>% 
+  separate(name, into = c("Переменная", "Статистика"), sep = "__") %>%
+  rename(`Значение` = `value`) %>%
+  flextable::flextable() %>%
+  flextable::theme_box() %>%
+  flextable::merge_v(c("Группа", "Переменная"))
+```
+
+merge_h() - с указанием функции
+i - строки, в которых нужно склеивать ячейки
+```{r}
+tibble(var_1 = c("p-value", "0.001"),
+       var_2 = c("p-value", "0.05")) %>%
+  flextable::flextable() %>%
+  flextable::theme_box() %>%
+  flextable::merge_h(i=1)
+```
+
+##flextable::align() - выравнивание для столбцов
+flextable::align(subtable, i = NULL, j = NULL, align = c("left", "center", "right", "justify"), part = "body")
+
+```{r}
+library(flextable)
+tibble(`Adverse events` = c("SOC Желудочно-кишечные нарушения 10017947", "PT Тошнота 10028813", "SOC Нарушения со стороны нервной системы 10029205", "PT Головная боль 10019211")) %>%
+  flextable() %>%
+  theme_box() %>%
+  align(align = "center", part = "all")
+```
+
+width() - установка ширины столбцов
+
+```{r}
+tibble(`Adverse events` = c("SOC Желудочно-кишечные нарушения 10017947", "PT Тошнота 10028813", "SOC Нарушения со стороны нервной системы 10029205", "PT Головная боль 10019211")) %>%
+  flextable() %>%
+  theme_box() %>%
+  align(i= ~stringr::str_detect(`Adverse events`, "SOC"), align = "left") %>%
+  align(i= ~stringr::str_detect(`Adverse events`, "PT"), align = "right") %>%
+  width(width = 2)
+```
+
+##flextable::bold(), flextable::italic() - жирный шрифт и курсир
+
+```{r}
+tibble(`Adverse events` = c("SOC Желудочно-кишечные нарушения 10017947", "PT Тошнота 10028813", "SOC Нарушения со стороны нервной системы 10029205", "PT Головная боль 10019211")) %>%
+  flextable() %>%
+  theme_box() %>%
+  align(i= ~stringr::str_detect(`Adverse events`, "SOC"), align = "left") %>%
+  align(i= ~stringr::str_detect(`Adverse events`, "PT"), align = "right") %>%
+  
+  bold(i=~stringr::str_detect(`Adverse events`, "SOC")) %>%
+  italic(i= ~stringr::str_detect(`Adverse events`, "PT")) %>%
+  
+  width(width = 2)
+```
+
+##flextable::color(), flextable::bg() - цвет текста и цвет ячейки
+
+http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf - доступные в R цвета
+
+```{r}
+is_pvalue_sign <- function(x) {
+  x %>% stringr::str_remove("<") %>% as.numeric() %>% `<`(0.05)
+}
+tibble("p-value" = c("<0.001", "0.38", "0.124", "0.05")) %>%
+  flextable() %>%
+  theme_box() %>%
+  color(i = ~ is_pvalue_sign(`p-value`), color = "orange")
+```
+```{r}
+is_pvalue_sign <- function(x) {
+  x %>% stringr::str_remove("<") %>% as.numeric() %>% `<`(0.05)
+}
+tibble("p-value" = c("<0.001", "0.124", "0.005", "0.05")) %>%
+  flextable() %>%
+  theme_box() %>%
+  bg(i = ~ is_pvalue_sign(`p-value`), bg = "orange")
+```
