@@ -1,0 +1,432 @@
+---
+title: "DataVis_homework_to_12_10"
+author: "AB"
+date: "2024-10-08"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggpubr)
+```
+
+```{r}
+hogwarts <- read_csv("Data/hogwarts_2024.csv")
+hogwarts |> head()
+
+hogwarts <- hogwarts |> mutate(
+  across(c(house, course, sex, wandCore, bloodStatus), ~ as.factor(.x)))
+  
+  glimpse(hogwarts)
+```
+
+```{r}
+theme_custom <- theme(
+    panel.background = element_rect(fill = "white"),
+    plot.title = element_text(size = 30, hjust = 0.5),
+    plot.subtitle = element_text(size = 25, hjust = 0.5),
+    strip.text = element_text(size = 16),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 16),
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 12)
+  )
+
+se <- function(x){
+  sd(x, na.rm=TRUE)/sqrt(length(x))
+}
+```
+
+#Диаграммы рассеяния(скаттерплоты)
+
+##1
+
+```{r}
+hogwarts %>%
+  ggplot()+
+geom_point(aes(x = `result`,
+               y = `Herbology exam`),
+           colour = "lightblue",
+           position = position_jitter(width = 3, height = 3))+
+  geom_smooth(aes(x = `result`,
+               y = `Herbology exam`),
+              method = "lm",
+              se = FALSE,
+              colour = "red3")+
+  theme_custom
+```
+
+Имеется ассоциация между суммарным баллом и баллом за экзамен по
+травологии. Из графика сделует, что те студенты, которые имели большой
+общий балл, сдавали экзамен по травологии на высокий балл, и наоборот,
+те студенты, которые имели небольшой общий балл, получали низкий балл по
+травологии. Большая часть студентов имеет 0-150 баллов за год и 25-70
+баллов по травологии.
+
+##2
+
+```{r}
+new_hogwarts <- hogwarts %>%
+  select(`id`,`result`, `house`, `Herbology exam`, `Muggle studies exam`, `Divinations exam`, `Potions exam`) %>%
+  pivot_longer(!c(id, result, house), names_to = "exam", values_to = "points")
+
+ new_hogwarts %>%
+  ggplot()+
+geom_point(aes(x = `result`,
+            y = `points`,
+            colour = house),
+           alpha = 0.5,
+           position = position_jitter(width = 3, height = 3))+
+  scale_color_manual(values = c("Gryffindor" = "#C50000", 
+                               "Hufflepuff" = "#ECB939", 
+                               "Ravenclaw" = "#41A6D9", 
+                               "Slytherin" = "#1F5D25"))+
+  geom_smooth(aes(x = `result`,
+               y = `points`),
+              method = "lm",
+              se = FALSE,
+              colour = "brown4") +
+   facet_wrap(vars(exam))+
+  theme_custom
+   
+
+```
+
+Существует ассоциация между общим баллом студентов и баллом по
+прорицаниям, травологии, маггловедению. По прорицаниям, травологии и
+маггловедению студенты, которые имели большой общий балл, сдавали данные
+экзамены на высокий балл и наоборот, те студенты, которые имели
+небольшой общий балл, получали низкий балл по экзаменам. Студенты
+когтеврана в основном лучше сдают данные экзамены, получают высший балл
+и получают больший общий балл, чем студенты других факультетов. Среди
+студентов слизерина больше всего плохо сдающих экзамены и набирающих
+меньший балл студентов, однако те студенты слизерина, которые набирают
+большой общий балл, хорошо сдают данные экзамены и получают высший балл.
+Студенты гриффиндора и пуффендуя набирают в основном средний общий балл
+и средний балл по экзаменам. По экзамену по зельеваренью ассоциация
+менее выражена и визуально сложно определить значима ли она. Также этот
+график демонтрирует, что студенты слизерина сдают экзамен по
+зельеваренью лучше остальных факультетов (единственные, кто набирает
+высший балл), причем высокий балл получают как студенты, которые
+получили низкий общий балл, так и те, кто получил высокий общий балл.
+Студенты остальных факультетов не получают высший балл по зельеваренью.
+Также 100 баллов студенты получают только по зельеваренью, по остальным
+экзаменам 100 баллов никто не получает.
+
+##3
+
+```{r}
+new_hogwarts %>%
+  ggplot()+
+geom_point(aes(x = `result`,
+            y = `points`,
+            colour = house),
+           alpha = 0.3,
+           position = position_jitter(width = 3, height = 3))+
+  scale_color_manual(values = c("Gryffindor" = "#C50000", 
+                               "Hufflepuff" = "#ECB939", 
+                               "Ravenclaw" = "#41A6D9", 
+                               "Slytherin" = "#1F5D25"))+
+  geom_smooth(aes(x = `result`,
+               y = `points`,
+               colour = house),
+              method = "lm",
+              se = FALSE) +
+   facet_wrap(vars(exam))+
+  theme_custom
+
+```
+
+#geom_col и вещи вокруг него
+
+##1
+
+```{r}
+#glimpse(hogwarts)
+#colnames(hogwarts)
+bloodStatus_points_week1_17 <- hogwarts %>%
+  rowwise() %>%
+  mutate(result_week_1_17 = sum(c(`week_1`, `week_2`,`week_3`,`week_4`,`week_5`,`week_6`,`week_7`,`week_8`,`week_9`,`week_10`,`week_11`,`week_12`,`week_13`,`week_14`,`week_15`,`week_16`,`week_17`))) %>%
+  group_by(bloodStatus) %>%
+  summarise(bloodStatus_points = sum(result_week_1_17))
+
+bloodStatus_points_week1_17 %>%
+  ggplot()+
+  geom_col(aes(x = fct_reorder(bloodStatus,bloodStatus_points, .desc = TRUE),
+               y = bloodStatus_points,
+               fill = bloodStatus))+
+  xlab(label = "blood status")+
+  ylab(label = "points week 1 - week 17")+
+  theme_custom
+```
+
+Гипотеза: полукровные студенты, имея генетическую основу для магии и
+осознавая свой статус больше стараются и получают высокиt баллы.
+Чистокровные студенты имеют магические способности, но зная, что они
+чистокровные меньше стараются, но преуспевают в учебе. Маггло-рожденные
+имеют меньший генетический вклад в магические способности, поэтому их
+старания не ведут к лучшей успеваемости.
+
+##2
+
+```{r}
+hogwarts1 <- hogwarts %>%
+  rowwise() %>%
+  mutate(result_week_1_17 = sum(c(`week_1`, `week_2`,`week_3`,`week_4`,`week_5`,`week_6`,`week_7`,`week_8`,`week_9`,`week_10`,`week_11`,`week_12`,`week_13`,`week_14`,`week_15`,`week_16`,`week_17`))) %>%
+  group_by(bloodStatus) %>%
+  summarise(student_count = length(bloodStatus))
+  
+ hogwarts2 <-  hogwarts %>%
+  rowwise() %>%
+  mutate(result_week_1_17 = sum(c(`week_1`, `week_2`,`week_3`,`week_4`,`week_5`,`week_6`,`week_7`,`week_8`,`week_9`,`week_10`,`week_11`,`week_12`,`week_13`,`week_14`,`week_15`,`week_16`,`week_17`))) %>%
+  group_by(bloodStatus) %>%
+  summarise(bloodStatus_points = sum(result_week_1_17)) %>%
+   select(bloodStatus_points)
+ 
+newbloodStatus_points_week1_17 <- hogwarts1 %>% bind_cols(hogwarts2)
+
+newbloodStatus_points_week1_17 %>%
+  ggplot()+
+  geom_col(aes(x = fct_reorder(bloodStatus,bloodStatus_points, .desc = TRUE),
+               y = bloodStatus_points,
+               fill = bloodStatus))+
+  xlab(label = "blood status")+
+  ylab(label = "points week 1 - week 17")+
+  geom_label(aes(x = 1,
+                 y = 7500,
+               label = 391),
+             size = 4)+
+  geom_label(aes(x = 2,
+                 y = 2500,
+               label = 109),
+             size = 4)+
+  geom_label(aes(x = 3,
+                 y = 1000,
+               label = 60),
+             size = 4)+
+  theme_custom
+```
+
+Исходя из графика можно сделать вывод, что полукровные студенты получили
+больше баллов за 17 недель, так как их количество больше, чем всех
+остальных студентов, а маггло-рожденных меньше всех. Такая интерпретация
+не совпадает с гипотезой, выдвинутой в 1 задании.
+
+##3
+
+```{r fig.height=6, fig.width=8}
+sex_bloodStatus_points_week1_17 <- hogwarts %>%
+  rowwise() %>%
+  mutate(result_week_1_17 = sum(c(`week_1`, `week_2`,`week_3`,`week_4`,`week_5`,`week_6`,`week_7`,`week_8`,`week_9`,`week_10`,`week_11`,`week_12`,`week_13`,`week_14`,`week_15`,`week_16`,`week_17`))) %>%
+  ungroup()%>%
+  group_by(bloodStatus, sex) %>%
+  summarise(bloodStatus_points = sum(result_week_1_17)) %>%
+  mutate(sex_bloodStatus = paste0(sex, " ", bloodStatus))
+
+#glimpse(sex_bloodStatus_points_week1_17)
+
+sex_bloodStatus_points_week1_17_plot <- sex_bloodStatus_points_week1_17 %>%
+  ggplot()+
+  geom_col(aes(x = bloodStatus_points,
+               y = fct_reorder(sex_bloodStatus,bloodStatus_points, .desc = FALSE),
+               fill = bloodStatus))+
+  labs(title = "Распределение очков за 1-17 нед. в зависимости от происхождения и пола",
+    x = "points week 1 - week 17",
+    y = "sex and blood status")+
+  #limits=c(0, max(df$value) + 40), expand = c(0, 0))
+  scale_x_continuous(limits= c(-500, 10000), breaks = seq(0,10000,1000))+
+  #xlim(-500,10000)+
+  geom_text(aes(y = fct_reorder(sex_bloodStatus, bloodStatus_points, .desc = FALSE), 
+               x = bloodStatus_points,
+               label = bloodStatus_points),
+            size = 4,
+            hjust = -0.2)+
+  theme(panel.background = element_rect(fill = "white"),
+    plot.title = element_text(size = 12, hjust = 0.5),
+    strip.text = element_text(size = 16),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 16),
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 12))
+
+ggsave("sex_and_bloodstatus_barplot.png", sex_bloodStatus_points_week1_17_plot, width = 8, height = 6, units = "in", dpi = 300)
+```
+
+##4
+
+Функция переворачивает оси графиков. Удобно использовать её, когда мы
+уже сделали график по определенным осям, а потом поняли, что график
+может выглядеть лучше, если его перевернуть, при этом не надо менять
+вручную оси. Минусы заключаются в упорядочивании при переворачивании
+графика, иногда может изменяться порядок переменных на графике и не
+соотвествовать порядку переменных из изначального графика.
+
+#Разное
+
+##1
+
+```{r fig.height=10, fig.width=14}
+#glimpse(hogwarts)
+potion_runes_boxplot <- hogwarts %>%
+  select(`id`, `Potions exam`, `Study of ancient runes exam`) %>%
+  pivot_longer(!`id`, names_to = "exam", values_to = "points") %>%
+  ggplot()+
+  geom_boxplot(aes(x = exam,
+                   y = points,
+                   fill = exam))+
+  theme_custom
+  #theme(
+    #legend.position = c(0.2, 0.8),
+        #legend.background = element_rect(fill = "white"))
+  
+potion_runes_jitter <- hogwarts %>%
+  select(`id`, `Potions exam`, `Study of ancient runes exam`) %>%
+  pivot_longer(!`id`, names_to = "exam", values_to = "points") %>%
+  ggplot()+
+  geom_jitter(aes (x = exam,
+                   y = points,
+                   colour = exam))+
+  theme_custom
+  
+potion_runes_hist <- hogwarts %>%
+  ggplot()+
+  geom_histogram(aes(x = `Potions exam`),
+                 fill = "coral",
+                 colour = "black",
+                 bins = 55)+
+  geom_histogram(aes(y = `Study of ancient runes exam`),
+                 fill = "cyan3",
+                 colour = "black",
+                 bins = 40)+
+  theme_custom
+
+ggarrange(ggarrange(potion_runes_boxplot, potion_runes_jitter, ncol = 2),
+          potion_runes_hist,
+          nrow = 2)
+```
+
+##2 Визуализируйте средний балл по зельеварению студентов с различным
+происхождением. Вы вольны добавить дополнительные детали и информацию на
+график. Проинтерпретируйте результат. Как вы думаете, почему он именно
+такой? Если у вас есть гипотеза, проиллюстрируйте ее еще одним графиком
+(или графиками). Объедините их при помощи ggarrange. (по 1 б. за первый
+и график и правильную интерпретацию с подтверждением в виде второго
+графика и текстовой аргументации). Измените порядок ваших фигур на
+первом графике слева направо следующим образом: маглорожденные,,
+чистокровные, полукровки. Скорректируйте название оси. Если у вас
+возникают сложности, обратитесь к шпаргалке по пакету forcats от posit.
+
+```{r fig.height= 6, fig.width= 12}
+
+mean_div <- hogwarts %>%
+  group_by(bloodStatus) %>%
+  summarise(mean_div = mean(`Divinations exam`) %>% round(2),
+            min = (min(`Divinations exam`) %>% round(2)),
+            max = (max(`Divinations exam`) %>% round(2))) %>%
+  ggplot()+
+  geom_pointrange(aes(x = bloodStatus,
+                   y = mean_div,
+                   ymin = min,
+                   ymax = max))+
+  theme_custom
+
+mean_potions_boxplot <- hogwarts %>%
+  ggplot()+
+  geom_boxplot(aes(x = bloodStatus,
+                   y = `Potions exam`,
+                   fill = bloodStatus))+
+  theme_custom
+
+mean_potions_error <- hogwarts %>%
+  group_by(bloodStatus) %>%
+  summarise(mean_potions = mean(`Potions exam`) %>% round(2),
+            min = (min(`Potions exam`) %>% round(2)),
+            max = (max(`Potions exam`) %>% round(2)),
+            sd = sd(`Potions exam`)) %>% 
+  ggplot(aes(x = bloodStatus,
+             y = mean_potions))+
+  geom_point()+
+  geom_errorbar(aes(ymin = mean_potions - `sd`, ymax = mean_potions + `sd`))+
+  theme_custom
+
+mean_potions <- hogwarts %>%
+  group_by(bloodStatus) %>%
+  summarise(mean_potions = mean(`Potions exam`) %>% round(2),
+            min = (min(`Potions exam`) %>% round(2)),
+            max = (max(`Potions exam`) %>% round(2))) %>%
+  ggplot()+
+  geom_pointrange(aes(x = bloodStatus,
+                   y = mean_potions,
+                   ymin = min,
+                   ymax = max))+
+  theme_custom
+
+mean_herb <- hogwarts %>%
+  group_by(bloodStatus) %>%
+  summarise(mean_herb = mean(`Herbology exam`) %>% round(2),
+            min = (min(`Herbology exam`) %>% round(2)),
+            max = (max(`Herbology exam`) %>% round(2))) %>%
+  ggplot()+
+  geom_pointrange(aes(x = bloodStatus,
+                   y = mean_herb,
+                   ymin = min,
+                   ymax = max))+
+  theme_custom
+
+mean_muggle <- hogwarts %>%
+  group_by(bloodStatus) %>%
+  summarise(mean_muggle = mean(`Muggle studies exam`) %>% round(2),
+            min = (min(`Muggle studies exam`) %>% round(2)),
+            max = (max(`Muggle studies exam`) %>% round(2))) %>%
+  ggplot()+
+  geom_pointrange(aes(x = bloodStatus,
+                   y = mean_muggle,
+                   ymin = min,
+                   ymax = max))+
+ theme_custom
+
+mean_transf <- hogwarts %>%
+  group_by(bloodStatus) %>%
+  summarise(mean_transf = mean(`Transfiguration exam`) %>% round(2),
+            min = (min(`Transfiguration exam`) %>% round(2)),
+            max = (max(`Transfiguration exam`) %>% round(2))) %>%
+  ggplot()+
+  geom_pointrange(aes(x = bloodStatus,
+                   y = mean_transf,
+                   ymin = min,
+                   ymax = max))+
+  theme_custom
+
+ggarrange(mean_potions, mean_potions_boxplot, mean_potions_error)
+ggarrange(mean_potions, mean_div, mean_transf, mean_herb, mean_muggle)
+```
+
+Средний балл по зельеваренью у студентов разного происхождения находится
+примерно на одном уровне, однако у маггло-рожденных балл всё-таки ниже,
+чем у остальных. Гипотеза: это дискриминация маггло-рожденных студентов
+со стороны преподавателя зельеваренья. Если взять для примера другие
+экзамены, данные студенты имеют такой же средний балл, как остальные
+студенты. Проанализируем средние баллы студентов разных происхождений по
+другим экзаменам. На графиках видно, что по остальным экзаменам средние
+баллы студентов почти равны. Таким образом имеет место дискриминация
+маггло-рожденных студентов на экзамене по зельеваренью.
+
+```{r}
+ hogwarts %>%
+  group_by(bloodStatus) %>%
+  summarise(mean_potions = mean(`Potions exam`) %>% round(2),
+            min = (min(`Potions exam`) %>% round(2)),
+            max = (max(`Potions exam`) %>% round(2))) %>%
+  ggplot(aes(x = bloodStatus, y = mean_potions))+
+  geom_pointrange(aes(x = factor(bloodStatus, levels = c("muggle-born", "pure-blood", "half-blood")),
+                   y = mean_potions,
+                   ymin = min,
+                   ymax = max))+
+   xlab("Blood status")+
+   ylab("Average potions exam score")+
+  theme_custom
+```
