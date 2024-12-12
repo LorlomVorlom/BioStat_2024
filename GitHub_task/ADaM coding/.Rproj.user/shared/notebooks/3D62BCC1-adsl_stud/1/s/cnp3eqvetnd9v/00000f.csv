@@ -1,0 +1,15 @@
+"0","compl_fl <- supp_disp %>% "
+"0","  filter(DSSEQ == ""3"") %>%"
+"0","  mutate(COMPLFL = ifelse("
+"0","    (grepl('Subject discontinued the study', DSSTATUS)), "
+"0","    'N', 'Y')) %>% "
+"0","  select(SUBJID, COMPLFL)"
+"0",""
+"0","colnames(pop_list) <- c('STUDYID', 'SUBJID', "
+"0","                        'STATUS', 'RANDN', "
+"0","                         'PP', 'PPXL', "
+"0","                         'FAS',	'FASXL', "
+"0","                         'SAF', 'SAFXL')"
+"2","Ошибка в names(x) <- value :
+  атрибут 'names' [10] должен быть той же длины, что и вектор [7]
+"

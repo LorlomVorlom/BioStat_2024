@@ -1,0 +1,77 @@
+---
+title: "Data_management_homework"
+author: "AB"
+date: "2024-12-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library("dplyr")
+library(tidyverse)
+library(readxl)
+library(openxlsx)
+library("admiral")
+```
+
+```{r}
+mh <- read.xlsx("SDTM/MH_MEDICALHISTORY.xlsx")
+adsl <- read.xlsx("ADaM-like/ADSL.xlsx")
+```
+mh = adsl:
+STUDYID = STUDYID
+STUDYID+SUBJID = SUBJID
+no = TRTP
+no = TRTPN
+
+
+MH - какие переменные нужны?
+MHSEQ
+MHCAT
+MHTERM
+MHDECOD 
+MHBODSYS 
+MHSTDTC
+MHENRTPT
+
+
+```{r}
+mh_done <- mh %>%
+  select(STUDYID, SUBJID, MHSEQ, MHTERM, MHCAT, MHDECOD, MHBODSYS, MHSTDTC, MHENDTC, MHENRTPT) %>%
+  filter(`MHCAT` == "Medical History") %>%
+  
+  mutate(ASTDT = MHSTDTC) %>% 
+  mutate(ASTDT = impute_dtc_dtm(ASTDT,
+  highest_imputation = "M",
+  date_imputation = "01-01")) %>%
+  mutate(ASTDT = format(as.Date(ASTDT), 
+                          "%d.%m.%Y")) %>% 
+ mutate(DTF = MHSTDTC) %>%
+ derive_vars_dt(
+   dtc = DTF,
+   new_vars_prefix = "AST",
+   highest_imputation = "M",
+   date_imputation = "first") %>%
+  mutate(DTF = NULL) %>%
+    mutate(AENDT = MHENDTC %>% as.character) %>%
+  mutate(DTF = AENDT) %>%
+ derive_vars_dt(
+   dtc = DTF,
+   new_vars_prefix = "AEN",
+   highest_imputation = "M",
+   date_imputation = "first") %>%
+   # mutate(AENDTF = MHENDTC) %>%
+    mutate(MHENRF = MHENRTPT) %>%
+    mutate(MHENRF = ifelse(MHENRF == "ONGOING", MHENRF, NA)) %>%
+    mutate(USUBJID = paste(STUDYID, SUBJID, sep = '-')) %>%
+    mutate(TRTP = ifelse(USUBJID == "XXXX1-PX-0X-001049" | USUBJID == "XXXX1-PX-0X-005009", "XXXX0", "XXXX1")) %>%
+  mutate(TRTPN = ifelse(USUBJID == "XXXX1-PX-0X-001049" | USUBJID == "XXXX1-PX-0X-005009", 1, 1) %>% as.integer) %>%
+  select(STUDYID, USUBJID, TRTP, TRTPN, MHSEQ, MHCAT, MHTERM, MHDECOD, MHBODSYS, MHSTDTC, ASTDT, ASTDTF, MHENDTC, AENDT, AENDTF, MHENRTPT, MHENRF) %>%
+  mutate(MHSEQ = MHSEQ %>% as.integer) %>%
+  mutate_at(vars(c(MHSTDTC, MHENDTC)), as.Date) %>%
+  mutate_at(vars(c(ASTDT, AENDT, AENDTF)), as.character)
+
+  
+```
+

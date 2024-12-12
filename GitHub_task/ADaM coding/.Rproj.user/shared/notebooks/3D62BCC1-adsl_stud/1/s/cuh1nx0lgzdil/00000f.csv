@@ -1,0 +1,5 @@
+"0","su_ds <- "
+"0","  su_ds %>% "
+"0","  select(SUBJID, SUCAT, SUDOSTXT) %>% "
+"0","  pivot_wider(names_from = SUCAT, values_from = SUDOSTXT) %>% "
+"0","  rename(SMOKSTAT = 'Tobacco Use', ALCSTAT = 'Alcohol Use')"

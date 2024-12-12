@@ -1,0 +1,2 @@
+"0","mh <- read.xlsx(""SDTM/MH_MEDICALHISTORY.xlsx"")"
+"0","adsl <- read.xlsx(""ADaM-like/ADSL.xlsx"")"
