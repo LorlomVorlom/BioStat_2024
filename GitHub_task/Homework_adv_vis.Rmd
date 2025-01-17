@@ -1,0 +1,378 @@
+---
+title: "Homework_advanced_vis"
+author: "AB"
+date: "2024-11-24"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(base)
+library(readr)
+library(readxl)
+library(xlsx)
+library(psych)
+library(tibble)
+library(dplyr)
+library(stringr)
+library(stringi)
+library(tidyr)
+library(flextable)
+library(ggpubr)
+library(robustHD)
+library(rstatix)
+library(Hmisc)
+library(GGally)
+library(cluster)
+library(factoextra)
+library(clustertend)
+library(dendextend)
+library(NbClust)
+library(fpc)
+library(dbscan)
+library(pheatmap)
+library(factoextra)
+library(ggbiplot)
+library(plotly)
+library(tidymodels)
+library(embed)
+library(corrr)
+library(corrplot)
+```
+
+# Задание 1
+
+```{r}
+very_low_birthweight <- readRDS("Data/Raw/very_low_birthweight.RDS")
+
+very_low_birthweight <- very_low_birthweight %>%
+  mutate_if(is.integer, as.numeric) %>%
+  mutate_at(vars(twn, magsulf, meth, toc, vent, pneumo, pda, cld, dead), as.factor)
+
+filter_column_by_na_count <- function (df,na_threshold = 100) {
+  na_count <- colSums(is.na(df))
+  cols_to_remove <- names(na_count[na_count > na_threshold])
+  if (length(cols_to_remove) > 0) {
+    df <- df[, !(names(df) %in% cols_to_remove)]
+    cat("Удалены столбцы:", cols_to_remove, "n")
+  } else {
+    cat("Столбцов с более чем", na_threshold, "NA не найдено.n")
+  }
+  return(df)
+}
+
+very_low_birthweight_nona <- filter_column_by_na_count (very_low_birthweight) %>%
+na.omit(very_low_birthweight_nona)
+
+write_rds(very_low_birthweight_nona, "Data/Raw/very_low_birthweight_nona.RDS")
+```
+
+# Задание 2 Постройте графики плотности распределения для числовых переменных. Удалите выбросы, если таковые имеются. Преобразуйте категориальные переменные в факторы. Для любых двух числовых переменных раскрасьте график по переменной ‘inout’.
+
+```{r, fig.height=14, fig.width=14}
+birthdens <- ggdensity(very_low_birthweight_nona, x = "birth", fill = "inout", palette = "jco")
+
+exitdens<- ggdensity(very_low_birthweight_nona, x = "exit", fill = "inout", palette = "jco")
+
+hospstaydens<- ggdensity(very_low_birthweight_nona, x = "hospstay", palette = "jco")
+ 
+lowphdens<- ggdensity(very_low_birthweight_nona, x = "lowph", palette = "jco")
+ 
+pltctdens<- ggdensity(very_low_birthweight_nona, x = "pltct", palette = "jco")
+ 
+gestdens<- ggdensity(very_low_birthweight_nona, x = "gest", palette = "jco")
+ 
+twndens<- ggdensity(very_low_birthweight_nona, x = "twn", palette = "jco")
+ 
+apg1dens<- ggdensity(very_low_birthweight_nona, x = "apg1", palette = "jco")
+
+ventdens<- ggdensity(very_low_birthweight_nona, x = "vent", palette = "jco")
+
+pneumodens<- ggdensity(very_low_birthweight_nona, x = "pneumo", palette = "jco")
+
+pdadens<- ggdensity(very_low_birthweight_nona, x = "pda", palette = "jco")
+
+clddens<- ggdensity(very_low_birthweight_nona, x = "cld", palette = "jco")
+
+yeardens<- ggdensity(very_low_birthweight_nona, x = "year", palette = "jco")
+
+deaddens<- ggdensity(very_low_birthweight_nona, x = "dead", palette = "jco")
+
+ggarrange(birthdens, exitdens, hospstaydens, lowphdens, pltctdens, gestdens, twndens, apg1dens, ventdens, pneumodens, pdadens, clddens, yeardens, deaddens,
+          ncol = 4, nrow = 4)
+
+summary(very_low_birthweight_nona)
+
+replace_outliers_with_na <- function(df, method = "iqr", multiplier = 1.5) {
+
+  if (!is.data.frame(df)) {
+    stop("Input must be a data.frame.")
+  }
+
+  numeric_cols <- sapply(df, is.numeric)
+  if (!any(numeric_cols)) {
+    cat("No numeric columns found.n")
+    return(df) # Возвращаем исходный датафрейм без изменений
+  }
+  
+  for (col_name in names(df)[numeric_cols]) {
+    if (method == "iqr") {
+      Q1 <- quantile(df[[col_name]], 0.25, na.rm = TRUE)
+      Q3 <- quantile(df[[col_name]], 0.75, na.rm = TRUE)
+      IQR <- Q3 - Q1
+      lower_bound <- Q1 - multiplier * IQR
+      upper_bound <- Q3 + multiplier * IQR
+      df[[col_name]][df[[col_name]] < lower_bound | df[[col_name]] > upper_bound] <- NA
+    } else if (method == "sd") {
+      mean_val <- mean(df[[col_name]], na.rm = TRUE)
+      sd_val <- sd(df[[col_name]], na.rm = TRUE)
+      lower_bound <- mean_val - multiplier * sd_val
+      upper_bound <- mean_val + multiplier * sd_val
+      df[[col_name]][df[[col_name]] < lower_bound | df[[col_name]] > upper_bound] <- NA
+    } else {
+      stop("Invalid method specified. Choose 'iqr' or 'sd'.")
+    }
+  }
+
+    cat("Выбросы заменены на NA в столбцах:", names(df)[numeric_cols], "n")
+
+  return(df)
+}
+
+very_low_birthweight_nona_iqr <- replace_outliers_with_na(very_low_birthweight_nona) %>%
+  na.omit(very_low_birthweight_nona) %>%
+  mutate(ID = row_number())
+  
+```
+
+# Задание 3 Проведите тест на сравнение значений колонки ‘lowph’ между группами в переменной inout. Вид статистического теста определите самостоятельно. Визуализируйте результат через библиотеку 'rstatix'. Как бы вы интерпретировали результат, если бы знали, что более низкое значение lowph ассоциировано с более низкой выживаемостью?
+
+```{r}
+compare_means(lowph ~ inout, data = very_low_birthweight_nona_iqr, method = "t.test")
+```
+
+# Задание 4 Сделайте новый датафрейм, в котором оставьте только континуальные или ранговые данные, кроме 'birth', 'year' и 'exit'. Сделайте корреляционный анализ этих данных. Постройте два любых типа графиков для визуализации корреляций.
+
+```{r, fig.height=14, fig.width=14}
+
+very_low_birthweight_selected <- very_low_birthweight_nona_iqr %>%
+  select(where(is.numeric), -birth, -year, -exit, -ID)
+
+str (very_low_birthweight_selected)
+summary(very_low_birthweight_selected)
+
+
+vlbcor <- cor(very_low_birthweight_selected)
+
+ggpairs(very_low_birthweight_selected)
+corrplot(vlbcor, method = 'number')
+vlbcor %>% 
+  network_plot(min_cor = .0)
+
+```
+
+# Задание 5 Постройте иерархическую кластеризацию на этом датафрейме.
+
+```{r}
+very_low_birthweight_selected_scaled <- scale(very_low_birthweight_selected)
+
+very_low_birthweight_selected_dist <- dist(very_low_birthweight_selected_scaled, method = "euclidean")
+
+very_low_birthweight_selected_dist.hc <- hclust(d = very_low_birthweight_selected_dist,
+                     method = "ward.D2")
+
+fviz_nbclust(very_low_birthweight_selected_scaled, kmeans, method = "wss")
+
+fviz_nbclust(very_low_birthweight_selected_scaled, kmeans, method = "silhouette")
+
+fviz_dend(very_low_birthweight_selected_dist.hc, 
+          k = 2, 
+          cex = 0.4, 
+          horiz = TRUE, 
+          k_colors = "jco",
+          rect = TRUE, 
+          rect_border = "jco", 
+          rect_fill = TRUE)
+```
+
+# Задание 6 Сделайте одновременный график heatmap и иерархической кластеризации. Интерпретируйте результат.
+
+```{r, fig.height=14, fig.width=14}
+heat <- fviz_dist(very_low_birthweight_selected_dist, show_labels = FALSE)
+
+dendro <- fviz_dend(very_low_birthweight_selected_dist.hc, 
+          k = 2, 
+          cex = 0.4, 
+          horiz = TRUE, 
+          k_colors = "jco",
+          rect = TRUE, 
+          rect_border = "jco", 
+          rect_fill = TRUE)
+
+ggarrange(heat, dendro,
+          ncol = 2, nrow = 1)
+
+pheatmap(very_low_birthweight_selected_scaled, 
+         show_rownames = FALSE, 
+         clustering_distance_rows = very_low_birthweight_selected_dist,
+         clustering_method = "ward.D2", 
+         cutree_rows = 5,
+         cutree_cols = length(colnames(very_low_birthweight_selected_scaled)),
+         angle_col = 45, 
+         main = "Dendrograms for clustering rows and columns with heatmap")
+```
+
+Интерпретация: на heatmap выделяются группы синих строк, что свидетельствует о наличии схожих наблюдений. В результате использования двух методов подсчета возможного количества кластеров, выяснилось, что вероятнее всего их два. Дендрограмма постоенная на основе имеющихся данных поделена на 2 кластера.
+
+# Задание 7
+Проведите PCA анализ на этих данных. Проинтерпретируйте результат. Нужно ли применять шкалирование для этих данных перед проведением PCA?
+
+```{r}
+very_low_birthweight.pca <- prcomp(very_low_birthweight_selected, 
+                scale = T)
+summary(very_low_birthweight.pca)
+
+fviz_eig(very_low_birthweight.pca, addlabels = T, ylim = c(0, 40))
+
+ 
+```
+
+Шкалирование необходимо, так как переменные измеряются в разных единицах, что будет вносить вклад в расчет дисперсий и определение главных компонент, а соответсвенно к неверным результатам.
+
+Интерпретация: в наших данных первыми двумя компонетами объясняется 61% вариации, что говорит о том, что в данных много скоррелированных переменных и  pca начинает вбирать в себя корреляцию. PC1 имеет наибольшее стандартное отклонение (1.5954), что означает, что она  объясняет  наибольшую  вариабельность  в  данных. PC1 объясняет 42.42%  общей  дисперсии, PC2 - 18.94%.В  данном  случае,  можно  рассмотреть  использование  первых  четырех  компонент (PC1-PC4),  которые  вместе  объясняют  86.41%  дисперсии. 
+
+# Задание 8
+Постройте biplot график для PCA. Раскрасьте его по значению колонки 'dead'.
+```{r}
+very_low_birthweight_biplot <- 
+  ggbiplot(very_low_birthweight.pca,
+         scale=0,
+         groups = as.factor(very_low_birthweight_nona_iqr$dead), 
+         ellipse = T)+
+  theme_minimal() +
+  geom_point(aes(text = paste("ID:", very_low_birthweight_nona_iqr$ID)),
+             size = 0.5)
+
+very_low_birthweight_biplot
+```
+
+# Задание 9
+Переведите последний график в 'plotly'. При наведении на точку нужно, чтобы отображалось id пациента.
+```{r}
+very_low_birthweight_plotly <- ggplotly(very_low_birthweight_biplot, tooltip = "text")
+very_low_birthweight_plotly
+```
+
+# Задание 10
+Дайте содержательную интерпретацию PCA анализу. Почему использовать колонку 'dead' для выводов об ассоциации с выживаемостью некорректно?
+
+Согласно PCA анализу есть 6 главных компонент, которые описывают вариативность исходных данных. В наших данных первыми двумя компонетами объясняется 61% вариации, что говорит о том, что в данных много скоррелированных переменных. PC1 имеет наибольшее стандартное отклонение (1.5954), что означает, что она  объясняет  наибольшую  вариабельность  в  данных, она объясняет 42.42%  общей  дисперсии. Таким образом, есть один основной фактор, влияющий на большую часть вариации данных. PC2 объясняет 18.94%, таким образом вероятно существует второй фактор. Использование  первых  четырех  компонент (PC1-PC4),  которые вместе  объясняют  86.41%  дисперсии могут быть достаточными для анализа. 
+
+По графику мужно отметить, что переменные hospstay и gest вероятнее всего имеют сильную отрицательную корреляцию, а hospstay и bw менее сильную отрицательную корреляцию, также переменные hospstay,gest и bw больше всего среди всех переменных коррелируют с PC1, внося больший вклад в вариацию данных. Переменные gest и bw вероятно имеют положительную корреляцию. Переменные pltet, apg1 и lowph вероятно имеют положительную корреляцию, из этих переменных pltet больше всех вносит влияние в PC2 и сильнее с ней коррелирует. Данные переменные (pltet, apg1 и lowph) с большой вероятностью не коррелируют с hospstay,gest и bw.
+
+Колонка dead является плохим вариантом для формирования выводов об ассоциации с выживаемостью, так как формирующиеся группы сильно перекрываются, соответственно плохо разделяются в пространстве главных компонент.
+
+# Задание 11
+Приведите ваши данные к размерности в две колонки через UMAP. Сравните результаты отображения точек между алгоритмами PCA и UMAP.
+
+```{r}
+umap_prep <- recipe(~., data = very_low_birthweight_selected) %>% 
+  step_normalize(all_predictors()) %>% 
+  step_umap(all_predictors()) %>%
+  prep() %>%
+  juice()
+
+umap_graph <- umap_prep %>%
+  ggplot(aes(UMAP1, UMAP2)) + 
+  geom_point(aes(color = as.factor(very_low_birthweight_nona_iqr$dead)), 
+             alpha = 0.7, size = 2)+
+  labs(color = NULL) 
+
+ggarrange(umap_graph, very_low_birthweight_biplot,
+          ncol = 2, nrow = 1)
+```
+
+Отображение точек изменилось в сторону сгущения: точки, относящие к одной группы более плотно прилежат друг к другу, однако все равно активно перекрываются, как на предыдущем графике
+
+# Задание 12 Давайте самостоятельно увидим, что снижение размерности – это группа методов, славящаяся своей неустойчивостью. Измените основные параметры UMAP (n_neighbors и min_dist) и проанализируйте, как это влияет на результаты.
+
+```{r}
+umap_prep_dist0.1 <- recipe(~., data = very_low_birthweight_selected) %>% 
+  step_normalize(all_predictors()) %>% 
+  step_umap( min_dist = 0.1, all_predictors()) %>%
+  prep() %>%
+  juice()
+
+umap_prep_dist0.1 %>%
+  ggplot(aes(UMAP1, UMAP2)) + 
+  geom_point(aes(color = as.factor(very_low_birthweight_nona_iqr$dead)), 
+             alpha = 0.7, size = 2)+
+  labs(color = NULL) 
+
+umap_prep_dist0.5 <- recipe(~., data = very_low_birthweight_selected) %>% 
+  step_normalize(all_predictors()) %>% 
+  step_umap(min_dist = 0.5, all_predictors()) %>%
+  prep() %>%
+  juice()
+
+umap_prep_dist0.5 %>%
+  ggplot(aes(UMAP1, UMAP2)) + 
+  geom_point(aes(color = as.factor(very_low_birthweight_nona_iqr$dead)), 
+             alpha = 0.7, size = 2)+
+  labs(color = NULL) 
+
+umap_prep_dist0.99 <- recipe(~., data = very_low_birthweight_selected) %>% 
+  step_normalize(all_predictors()) %>% 
+  step_umap(min_dist = 0.99, all_predictors()) %>%
+  prep() %>%
+  juice()
+
+umap_prep_dist0.99 %>%
+  ggplot(aes(UMAP1, UMAP2)) + 
+  geom_point(aes(color = as.factor(very_low_birthweight_nona_iqr$dead)), 
+             alpha = 0.7, size = 2)+
+  labs(color = NULL) 
+```
+
+Параметр min_dist в UMAP контролирует, насколько близко точки могут располагаться друг к другу на результирующем графике. Малое значение min_dist (например, 0.1) позволяет алгоритму отобразить мелкие детали и локальные структуры, такие как небольшие кластеры  и  цепочки  точек.  Увеличение min_dist приводит к размытию этих деталей и выделению более  общих черт данных. При этом теряется информация о локальной топологии, но становится более заметна глобальная структура.
+
+```{r}
+umap_prep_neighbors2 <- recipe(~., data = very_low_birthweight_selected) %>% 
+  step_normalize(all_predictors()) %>% 
+  step_umap(neighbors = 2, all_predictors()) %>%
+  prep() %>%
+  juice()
+
+umap_prep_neighbors2 %>%
+  ggplot(aes(UMAP1, UMAP2)) + 
+  geom_point(aes(color = as.factor(very_low_birthweight_nona_iqr$dead)), 
+             alpha = 0.7, size = 2)+
+  labs(color = NULL) 
+
+umap_prep_neighbors8 <- recipe(~., data = very_low_birthweight_selected) %>% 
+  step_normalize(all_predictors()) %>% 
+  step_umap(neighbors = 8, all_predictors()) %>%
+  prep() %>%
+  juice()
+
+umap_prep_neighbors8 %>%
+  ggplot(aes(UMAP1, UMAP2)) + 
+  geom_point(aes(color = as.factor(very_low_birthweight_nona_iqr$dead)), 
+             alpha = 0.7, size = 2)+
+  labs(color = NULL) 
+
+umap_prep_neighbors15 <- recipe(~., data = very_low_birthweight_selected) %>% 
+  step_normalize(all_predictors()) %>% 
+  step_umap(neighbors = 15, all_predictors()) %>%
+  prep() %>%
+  juice()
+
+umap_prep_neighbors15 %>%
+  ggplot(aes(UMAP1, UMAP2)) + 
+  geom_point(aes(color = as.factor(very_low_birthweight_nona_iqr$dead)), 
+             alpha = 0.7, size = 2)+
+  labs(color = NULL) 
+```
+
+При малом значении n_neighbors (2) UMAP отображает только локальные связи,  формируя разрозненные компоненты. С увеличением n_neighbors (8) алгоритм учитывает более глобальную структуру, объединяя компоненты и лучше отражая взаимосвязи между ними. При большом значенииn_neighbors (15) график демонстрирует преимущественно общую структуру данных.
